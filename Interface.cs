@@ -1,0 +1,201 @@
+﻿using System.Text;
+
+namespace Pagent
+{
+    // Really smart class name !
+    public class @interface
+    {
+        private string masterEndpoint;
+        private string sToken;
+        private string keyHeader;
+        private string forbiddenErrorStr;
+        private int bindPort;
+        private List<string> queryIPs;
+
+
+        public @interface()
+        {    
+            masterEndpoint = sensitiveVars.masterEndpoint;
+            sToken = sensitiveVars.sToken;
+            keyHeader = sensitiveVars.keyHeader;
+            forbiddenErrorStr = sensitiveVars.forbiddenErrorStr;
+            bindPort = sensitiveVars.bindPort;
+            queryIPs = sensitiveVars.queryIPs;
+        }
+
+        // Execute an OS command
+        private void ExecuteCommand(string command)
+        {
+            try
+            {
+#if LINUX
+                var psi = new System.Diagnostics.ProcessStartInfo();
+                psi.FileName = "/bin/bash";
+                psi.Arguments = "-c \"" + command + "\"";
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                var process = System.Diagnostics.Process.Start(psi);
+                process.WaitForExit();
+#elif WINDOWS
+                var psi = new System.Diagnostics.ProcessStartInfo();
+                psi.FileName = "cmd.exe";
+                psi.Arguments = "/C " + command;
+                psi.UseShellExecute = false;
+                psi.RedirectStandardOutput = true;
+                psi.RedirectStandardError = true;
+                var process = System.Diagnostics.Process.Start(psi);
+                process.WaitForExit();
+#endif
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine($"[!] Error while executing {command}:\n{e.Message}");
+                Environment.Exit(1);
+            }
+        }
+
+        // Add an IP (range) to the whitelist
+        public void AddIP(string ip, int port)
+        {
+            if (!ip.Contains("/"))
+                ip += "/32";
+
+#if LINUX
+            ExecuteCommand($"iptables -I INPUT -s {ip} -p tcp --dport {port} -j ACCEPT");
+            ExecuteCommand($"iptables -I INPUT -s {ip} -p udp --dport {port} -j ACCEPT");
+#elif WINDOWS
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip={ip}");
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip={ip}");
+#endif
+        }
+
+        public void RemoveIP(string ip, int port)
+        {
+            if (!ip.Contains("/"))
+                ip += "/32";
+
+#if LINUX
+            ExecuteCommand($"iptables -D INPUT -s {ip} -p tcp --dport {port} -j ACCEPT");
+            ExecuteCommand($"iptables -D INPUT -s {ip} -p udp --dport {port} -j ACCEPT");
+#elif WINDOWS
+            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip={ip}");
+            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip={ip}");
+#endif
+        }
+
+        public void ClearList()
+        {
+
+#if LINUX
+
+            ExecuteCommand("iptables -F; iptables -X");
+            Console.WriteLine(" [/] Cleared iptables");
+            
+#elif WINDOWS
+
+            ExecuteCommand("netsh advfirewall firewall delete rule name=\"PPM\"");
+            Console.WriteLine(" [/] Cleared firewall");
+#endif
+
+        }
+
+        // Call Master server to get the list of IP ranges to be whitelisted
+        public List<string> getRangesToBeWhitelisted(string slug)
+        {
+            // List that will be returned
+            List<string> returnList = new();
+            
+            // Get token
+            byte[] data = Convert.FromBase64String(sToken);
+            string token = Encoding.UTF8.GetString(data) + slug;
+
+            // Craft the request
+            string url = $"{masterEndpoint}?slug={slug}&token={token}";
+            HttpClient client = new HttpClient();
+            client.DefaultRequestHeaders.Add("key", keyHeader+slug);
+            
+#if WINDOWS
+            // Ignore SSL errors on Windows
+            System.Net.ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
+#endif
+            
+            // Get response from the server
+            var response = client.GetAsync(url).Result;
+            string responseString = response.Content.ReadAsStringAsync().Result;
+            if(responseString == forbiddenErrorStr){
+                Console.WriteLine(" [!] Error: Request refused.");
+                Environment.Exit(1);
+            }
+            
+            // Parse the result and store each IP range in the list.
+            string[] lines = responseString.Split("\n");
+            
+            foreach (string line in lines)
+                if (line != "")
+                    returnList.Add(line);
+
+            return returnList;
+        }
+
+        // Init WL IP on the port of __this__ software's web server
+        public void AntiAntiAntiScan()
+        {
+            // Allow query IPs
+            foreach(string ip in queryIPs)
+            {
+                AddIP(ip, bindPort);
+            }
+
+            // Block trafic on port
+#if LINUX
+            // block tcp
+            ExecuteCommand($"iptables -A INPUT -p tcp --dport {bindPort} -j DROP");
+
+#elif WINDOWS
+            // block tcp
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPMQIP\" dir=in action=block protocol=TCP localport={bindPort}");
+#endif
+            Console.WriteLine(" [\\] Init ok");
+        }
+
+        public void InitWL(string slug, int port)
+        {
+            // Flush
+            ClearList();
+
+            // Check if file exists for base iptables
+            if (File.Exists("iptables.txt"))
+            {
+                Console.WriteLine(" [\\] Executing commands from iptables.txt");
+                // execute each line
+                string[] lines = File.ReadAllLines("iptables.txt");
+                foreach (string line in lines)
+                {
+                    ExecuteCommand(line);
+                }
+            }
+
+            List<string> ranges = getRangesToBeWhitelisted(slug);
+            // For each IP range, add it to the whitelist
+            foreach (string range in ranges)
+            {
+                AddIP(range, port);
+            }
+
+#if LINUX
+                // block tcp
+                ExecuteCommand($"iptables -A INPUT -p tcp --dport {port} -j DROP");
+                // block udp
+                ExecuteCommand($"iptables -A INPUT -p udp --dport {port} -j DROP");
+#elif WINDOWS
+                // block tcp
+                ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=block protocol=TCP localport={port}");
+                // block udp
+                ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=block protocol=UDP localport={port}");
+#endif
+                Console.WriteLine(" [\\] Whitelist initialized");
+
+        }
+    }
+}
