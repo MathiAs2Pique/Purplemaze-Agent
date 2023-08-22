@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Remove="SensitiveVars.example.cs" />
+    <Compile Remove="src/SensitiveVars.example.cs" />
   </ItemGroup>
 
 </Project>
