@@ -86,6 +86,11 @@ namespace Pagent
         // Add an IP (range) to the whitelist
         public void AddIP(string ip, int port)
         {
+            // Validate IP/range
+            if (!IsIpOrRangeValid(ip))
+                return;
+
+            // Single IP ? Convert to /32
             if (!ip.Contains("/"))
                 ip += "/32";
 
@@ -100,6 +105,11 @@ namespace Pagent
 
         public void RemoveIP(string ip, int port)
         {
+            // Validate IP/range
+            if (!IsIpOrRangeValid(ip))
+                return;
+
+            // Single IP ? Convert to /32
             if (!ip.Contains("/"))
                 ip += "/32";
 
