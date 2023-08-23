@@ -93,8 +93,8 @@ namespace Pagent
             ExecuteCommand($"iptables -I INPUT -s {ip} -p tcp --dport {port} -j ACCEPT");
             ExecuteCommand($"iptables -I INPUT -s {ip} -p udp --dport {port} -j ACCEPT");
 #elif WINDOWS
-            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip={ip}");
-            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip={ip}");
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip=\"{ip}\"");
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip=\"{ip}\"");
 #endif
         }
 
@@ -107,8 +107,8 @@ namespace Pagent
             ExecuteCommand($"iptables -D INPUT -s {ip} -p tcp --dport {port} -j ACCEPT");
             ExecuteCommand($"iptables -D INPUT -s {ip} -p udp --dport {port} -j ACCEPT");
 #elif WINDOWS
-            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip={ip}");
-            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip={ip}");
+            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip=\"{ip}\"");
+            ExecuteCommand($"netsh advfirewall firewall delete rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip=\"{ip}\"");
 #endif
         }
 
