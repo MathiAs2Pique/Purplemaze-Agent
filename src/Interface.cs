@@ -1,4 +1,5 @@
-﻿using System.Text;
+﻿using System.Net;
+using System.Text;
 
 namespace Pagent
 {
@@ -21,6 +22,33 @@ namespace Pagent
             forbiddenErrorStr = sensitiveVars.forbiddenErrorStr;
             bindPort = sensitiveVars.bindPort;
             queryIPs = sensitiveVars.queryIPs;
+        }
+
+        // Check IPv4
+        private bool IsIPValid(string ip)
+        {
+            return IPAddress.TryParse(ip, out _);
+        }
+
+        // Check IPv4 or Range
+        private bool IsIpOrRangeValid(string ipOrRange)
+        {
+            // In case of a range
+            if (ipOrRange.Contains("/"))
+            {
+                // Check IPv4
+                if (!IsIPValid(ipOrRange.Split("/")[0]))
+                    return false;
+
+                // Check range
+                int range = -1;
+                if (!Int32.TryParse(ipOrRange.Split("/")[1], out range) && (range >= 0 && range <= 32))
+                    return false;
+
+                return true;
+            }
+            else
+                return IsIPValid(ipOrRange);
         }
 
         // Execute an OS command
