@@ -27,8 +27,8 @@ class PPMProxy
         int port = Int32.Parse(Environment.GetCommandLineArgs()[2]);
         // Init
         try{
-            linterface.AntiAntiAntiScan();
             linterface.InitWL(server, port);
+            linterface.AntiAntiAntiScan();
         }
         catch(Exception e){
             Console.WriteLine(" [!] Error: " + e.Message);
