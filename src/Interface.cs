@@ -54,7 +54,6 @@ namespace Pagent
         // Execute an OS command
         private void ExecuteCommand(string command)
         {
-            Console.WriteLine($"\n\nExecuting: \n{command}\n\n");
             try
             {
 #if LINUX
