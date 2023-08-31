@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Dynamic;
 using System.Linq;
 using System.Net;
+using System.Net.Cache;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -11,7 +12,7 @@ namespace Pagent
     public class webServer
     {
         public static HttpListener listener;
-        public static string key;
+        public string key;
 
         public webServer(){
             key = sensitiveVars.reqKey;
@@ -22,7 +23,7 @@ namespace Pagent
             return DateTimeOffset.Now.ToUnixTimeSeconds();
         }
 
-        public static async Task HandleIncomingConnections(int port, @interface linterface)
+        public static async Task HandleIncomingConnections(int port, @interface linterface ,webServer server)
         {
             bool run = true;
             while (run)
@@ -34,10 +35,11 @@ namespace Pagent
                     HttpListenerResponse resp = ctx.Response;
 
                     string returnStr = "{\"success\":false, \"error\":\"Generic Error.\"}";
-                    bool doContinue = !((!req.Headers.AllKeys.Contains("Key") || req.Headers["Key"] != key) && (!req.Headers.AllKeys.Contains("key") || req.Headers["key"] != key));
+                    bool doContinue = ((req.Headers.AllKeys.Contains("Key") && req.Headers["Key"] == server.key) || (req.Headers.AllKeys.Contains("key") && req.Headers["key"] == server.key));
 
                     if (!doContinue)
-                    {                        
+                    {                
+                        returnStr = "{\"success\":false, \"error\":\"Wrong / missing authorization.\"}";        
                         Console.WriteLine("[!] Wrong / missing authorization");
                     }
                     
@@ -134,7 +136,7 @@ namespace Pagent
                     listener.Start();
                     Console.WriteLine(" [\\] Web server started.");
                     Console.WriteLine(" [\\] Listening.");
-                    Task listenTask = HandleIncomingConnections(port, linterface);
+                    Task listenTask = HandleIncomingConnections(port, linterface, new webServer());
                     listenTask.GetAwaiter().GetResult();
                 }
                 catch (Exception e)
