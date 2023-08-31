@@ -54,6 +54,7 @@ namespace Pagent
         // Execute an OS command
         private void ExecuteCommand(string command)
         {
+            Console.WriteLine($"\n\nExecuting: \n{command}\n\n");
             try
             {
 #if LINUX
@@ -84,7 +85,7 @@ namespace Pagent
         }
 
         // Add an IP (range) to the whitelist
-        public void AddIP(string ip, int port)
+        public void AddIP(string ip, int port, bool isSpecial = false)
         {
             // Validate IP/range
             if (!IsIpOrRangeValid(ip))
@@ -98,9 +99,11 @@ namespace Pagent
             ExecuteCommand($"iptables -I INPUT -s {ip} -p tcp --dport {port} -j ACCEPT");
             ExecuteCommand($"iptables -I INPUT -s {ip} -p udp --dport {port} -j ACCEPT");
 #elif WINDOWS
-            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=TCP localport={port} remoteip=\"{ip}\"");
-            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=allow protocol=UDP localport={port} remoteip=\"{ip}\"");
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"{((!isSpecial)?"PPM":"PPMQIP")}\" dir=in action=allow protocol=TCP localport={port} remoteip=\"{ip}\"");
+            ExecuteCommand($"netsh advfirewall firewall add rule name=\"{((!isSpecial)?"PPM":"PPMQIP")}\" dir=in action=allow protocol=UDP localport={port} remoteip=\"{ip}\"");
 #endif
+
+            Console.WriteLine($" [+] Added {ip} to the whitelist (port {port}))");
         }
 
         public void RemoveIP(string ip, int port)
@@ -133,6 +136,7 @@ namespace Pagent
 #elif WINDOWS
 
             ExecuteCommand("netsh advfirewall firewall delete rule name=\"PPM\"");
+            ExecuteCommand("netsh advfirewall firewall delete rule name=\"PPMQIP\"");
             Console.WriteLine(" [/] Cleared firewall");
 #endif
 
@@ -182,17 +186,17 @@ namespace Pagent
             // Allow query IPs
             foreach(string ip in queryIPs)
             {
-                AddIP(ip, bindPort);
+                AddIP(ip, bindPort, true);
             }
 
             // Block trafic on port
 #if LINUX
             // block tcp
             ExecuteCommand($"iptables -A INPUT -p tcp --dport {bindPort} -j DROP");
+            // block udp
+            ExecuteCommand($"iptables -A INPUT -p udp --dport {bindPort} -j DROP");
 
-#elif WINDOWS
-            // block tcp
-            ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPMQIP\" dir=in action=block protocol=TCP localport={bindPort}");
+            // We don't need to block on Windows, as the default policy is to block all trafic.
 #endif
             Console.WriteLine(" [\\] Init ok");
         }
@@ -226,11 +230,8 @@ namespace Pagent
                 ExecuteCommand($"iptables -A INPUT -p tcp --dport {port} -j DROP");
                 // block udp
                 ExecuteCommand($"iptables -A INPUT -p udp --dport {port} -j DROP");
-#elif WINDOWS
-                // block tcp
-                ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=block protocol=TCP localport={port}");
-                // block udp
-                ExecuteCommand($"netsh advfirewall firewall add rule name=\"PPM\" dir=in action=block protocol=UDP localport={port}");
+
+                // We don't need to block on Windows, as the default policy is to block all trafic.
 #endif
                 Console.WriteLine(" [\\] Whitelist initialized");
 
