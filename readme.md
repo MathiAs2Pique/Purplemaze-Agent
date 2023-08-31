@@ -12,7 +12,7 @@ PurpleMaze's core servers make a request to the Pagent as soon as a proxy is cre
 ## How to build ?
 Well, even if I don't know why you would want to build it yourself, you can do it by:
 - Clone the repo
-- Rename `src/SensitiveVars.cs` to `src/SensitiveVars.cs` and fill it with your own values
+- Rename `src/SensitiveVars.example.cs` to `src/SensitiveVars.cs` and fill it with your own values
 - Install DotNet SDK 6.0+
 - Run the "build.bat" file (Both Windows and Linux are supported)
 - Solutions in `bin/Release/net6.0/linux-x64/publish` and `bin/Release/net6.0/win-x64/publish`
