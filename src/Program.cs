@@ -7,9 +7,6 @@ class PPMProxy
         Console.WriteLine("PurpleMaze Agent");
         Console.WriteLine("Copyright (C) 2022-2023");
         Console.WriteLine("MathiAs2Pique (@m2p_)");
-        
-        // Get an instance of the interface class
-        @interface linterface = new @interface();
 
 #if WINDOWS
         Console.WriteLine(" [!] Platform: Windows.");
@@ -25,8 +22,24 @@ class PPMProxy
         // Parse arguments
         string server = Environment.GetCommandLineArgs()[1];
         int port = Int32.Parse(Environment.GetCommandLineArgs()[2]);
+        string ip = "";
+        // Specify outgoing IP address
+        if(Environment.GetCommandLineArgs().Length > 3)
+        {
+            ip = Environment.GetCommandLineArgs()[3];
+            if(!new @interface().IsIpOrRangeValid(ip))
+            {
+                Console.WriteLine(" [!] Error: Invalid IP address provided.");
+                Environment.Exit(1);
+            }
+        }
+
+        // Get an instance of the interface class
+        @interface linterface = new @interface(ip);
+
         // Init
-        try{
+        try
+        {
             linterface.InitWL(server, port);
             linterface.AntiAntiAntiScan();
         }

@@ -1,4 +1,6 @@
 ﻿using System.Net;
+using System.Net.Sockets;
+using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace Pagent
@@ -12,9 +14,9 @@ namespace Pagent
         private string forbiddenErrorStr;
         private int bindPort;
         private List<string> queryIPs;
+        private string outgoingAddress = null;
 
-
-        public @interface()
+        public @interface(string specialAddress = null)
         {    
             masterEndpoint = sensitiveVars.masterEndpoint;
             sToken = sensitiveVars.sToken;
@@ -22,6 +24,7 @@ namespace Pagent
             forbiddenErrorStr = sensitiveVars.forbiddenErrorStr;
             bindPort = sensitiveVars.bindPort;
             queryIPs = sensitiveVars.queryIPs;
+            outgoingAddress = specialAddress;
         }
 
         // Check IPv4
@@ -31,7 +34,7 @@ namespace Pagent
         }
 
         // Check IPv4 or Range
-        private bool IsIpOrRangeValid(string ipOrRange)
+        public bool IsIpOrRangeValid(string ipOrRange)
         {
             // In case of a range
             if (ipOrRange.Contains("/"))
@@ -141,12 +144,46 @@ namespace Pagent
 
         }
 
+        // Ref: https://stackoverflow.com/questions/65930192/how-to-bind-httpclient-to-a-specific-source-ip-address-in-net-5
+        public static HttpClient GetHttpClient(IPAddress address)
+        {
+            Console.WriteLine($" [\\] Using outgoing IP address {address}");
+            if (IPAddress.Any.Equals(address))
+                return new HttpClient();
+
+            SocketsHttpHandler handler = new SocketsHttpHandler();
+
+            handler.ConnectCallback = async (context, cancellationToken) =>
+            {
+                Socket socket = new Socket(SocketType.Stream, ProtocolType.Tcp);
+
+                socket.Bind(new IPEndPoint(address, 0));
+
+                socket.NoDelay = true;
+
+                try
+                {
+                    await socket.ConnectAsync(context.DnsEndPoint, cancellationToken).ConfigureAwait(false);
+
+                    return new NetworkStream(socket, true);
+                }
+                catch
+                {
+                    socket.Dispose();
+
+                    throw;
+                }
+            };
+
+            return new HttpClient(handler);
+        }
+
         // Call Master server to get the list of IP ranges to be whitelisted
         public List<string> getRangesToBeWhitelisted(string slug)
         {
             // List that will be returned
             List<string> returnList = new();
-            
+
             // Get token
             byte[] data = Convert.FromBase64String(sToken);
             string token = Encoding.UTF8.GetString(data) + slug;
@@ -154,30 +191,38 @@ namespace Pagent
             // Craft the request
             string url = $"{masterEndpoint}?slug={slug}&token={token}";
             HttpClient client = new HttpClient();
-            client.DefaultRequestHeaders.Add("key", keyHeader+slug);
-            
+
+            // In case of specific IP address
+            if(outgoingAddress != null)
+            {
+                client = GetHttpClient(IPAddress.Parse(outgoingAddress));
+            }
+            client.DefaultRequestHeaders.Add("key", keyHeader + slug);
+
 #if WINDOWS
             // Ignore SSL errors on Windows
             System.Net.ServicePointManager.ServerCertificateValidationCallback += (sender, cert, chain, sslPolicyErrors) => true;
 #endif
-            
+
             // Get response from the server
             var response = client.GetAsync(url).Result;
             string responseString = response.Content.ReadAsStringAsync().Result;
-            if(responseString == forbiddenErrorStr){
+            if (responseString == forbiddenErrorStr)
+            {
                 Console.WriteLine(" [!] Error: Request refused.");
                 Environment.Exit(1);
             }
-            
+
             // Parse the result and store each IP range in the list.
             string[] lines = responseString.Split("\n");
-            
+
             foreach (string line in lines)
                 if (line != "")
                     returnList.Add(line);
 
             return returnList;
         }
+
 
         // Init WL IP on the port of __this__ software's web server
         public void AntiAntiAntiScan()
