@@ -43,7 +43,7 @@ namespace Pagent
                         Console.WriteLine("[!] Wrong / missing authorization");
                     }
                     
-                    if (req.RemoteEndPoint != null && !sensitiveVars.queryIPs.Contains(req.RemoteEndPoint.Address.ToString()))
+                    if (!sensitiveVars.queryIPs.Contains(req.RemoteEndPoint.Address.ToString()+"/32"))
                     {
                         doContinue = false;
                         Console.WriteLine("[!] Wrong query IP: " + req.RemoteEndPoint.Address.ToString());
