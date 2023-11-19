@@ -11,8 +11,8 @@ namespace Pagent
         public const string forbiddenErrorStr = "";
         public static List<string> queryIPs = new List<string>()
         {
-            "1.1.1.1",
-            "2.2.2.2"
+            "1.1.1.1/32",
+            "2.2.2.2/32"
         };
     }
 }
