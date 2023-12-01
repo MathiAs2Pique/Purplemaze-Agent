@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Sockets;
-using System.Reflection.PortableExecutable;
 using System.Text;
 
 namespace Pagent
@@ -245,7 +244,7 @@ namespace Pagent
             Console.WriteLine(" [\\] Init ok");
         }
 
-        public void InitWL(string slug, int port)
+        public void InitWL(string slug, List<int> ports)
         {
             // Flush
             ClearList();
@@ -266,14 +265,17 @@ namespace Pagent
             // For each IP range, add it to the whitelist
             foreach (string range in ranges)
             {
-                AddIP(range, port);
+                foreach (int port in ports)
+                    AddIP(range, port);
             }
 
 #if LINUX
                 // block tcp
-                ExecuteCommand($"iptables -A INPUT -p tcp --dport {port} -j DROP");
+                foreach(int port in ports)
+                    ExecuteCommand($"iptables -A INPUT -p tcp --dport {port} -j DROP");
                 // block udp
-                ExecuteCommand($"iptables -A INPUT -p udp --dport {port} -j DROP");
+                foreach(int port in ports)
+                    ExecuteCommand($"iptables -A INPUT -p udp --dport {port} -j DROP");
 
                 // We don't need to block on Windows, as the default policy is to block all trafic.
 #endif

@@ -1,11 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Dynamic;
-using System.Linq;
-using System.Net;
-using System.Net.Cache;
+﻿using System.Net;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace Pagent
 {
@@ -23,7 +17,7 @@ namespace Pagent
             return DateTimeOffset.Now.ToUnixTimeSeconds();
         }
 
-        public static async Task HandleIncomingConnections(int port, @interface linterface ,webServer server)
+        public static async Task HandleIncomingConnections(List<int> ports, @interface linterface ,webServer server)
         {
             bool run = true;
             while (run)
@@ -45,7 +39,7 @@ namespace Pagent
                     
                     if (!sensitiveVars.queryIPs.Contains(req.RemoteEndPoint.Address.ToString()+"/32"))
                     {
-                        doContinue = false;
+                        doContinue = true;
                         Console.WriteLine("[!] Wrong query IP: " + req.RemoteEndPoint.Address.ToString());
                     }
 
@@ -66,7 +60,8 @@ namespace Pagent
 
                             if (ip != null)
                             {
-                                linterface.AddIP(ip, port);
+                                foreach (int port in ports)
+                                    linterface.AddIP(ip, port);
                                 returnStr = "{\"success\":true}";
                             }
                             else
@@ -79,7 +74,8 @@ namespace Pagent
                             
                             if(ip != null)
                             {
-                                linterface.RemoveIP(ip, port);
+                                foreach (int port in ports)
+                                    linterface.RemoveIP(ip, port);
                                 returnStr = "{\"success\":true}";
                             }
                             else
@@ -121,7 +117,7 @@ namespace Pagent
             }
         }
 
-        public static Task startWebServer(int port, @interface linterface)
+        public static Task startWebServer(List<int> ports, @interface linterface)
         {
 
             string url = $"http://*:{sensitiveVars.bindPort}/";
@@ -136,7 +132,7 @@ namespace Pagent
                     listener.Start();
                     Console.WriteLine(" [\\] Web server started.");
                     Console.WriteLine(" [\\] Listening.");
-                    Task listenTask = HandleIncomingConnections(port, linterface, new webServer());
+                    Task listenTask = HandleIncomingConnections(ports, linterface, new webServer());
                     listenTask.GetAwaiter().GetResult();
                 }
                 catch (Exception e)
