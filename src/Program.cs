@@ -16,12 +16,22 @@ class PPMProxy
         
         if(Environment.GetCommandLineArgs().Length < 3){
             Console.WriteLine(" [!] Error: Setup error.");
-            Console.WriteLine($" [!] Usage: {Environment.GetCommandLineArgs()[0]} <server> \"<ports>\" <ip>");
+            Console.WriteLine($" [!] Usage: {Environment.GetCommandLineArgs()[0]} \"<servers>\" \"<ports>\" <ip>");
             Environment.Exit(0);
         }
 
         // Parse arguments
-        string server = Environment.GetCommandLineArgs()[1];
+        List<string> servers = new List<string>();
+        if(Environment.GetCommandLineArgs()[1].Contains(','))
+        {
+            foreach(string server in Environment.GetCommandLineArgs()[1].Split(","))
+            {
+                servers.Add(server);
+                Console.WriteLine($" [+] Server {server} added to the list");
+            }
+        }
+        else
+            servers.Add(Environment.GetCommandLineArgs()[1]);
 
         // Get port(s)
         List<int> ports = new List<int>();
@@ -60,7 +70,8 @@ class PPMProxy
         // Init
         try
         {
-            linterface.InitWL(server, ports);
+            foreach(string server in servers)
+                linterface.InitWL(server, ports);
             linterface.AntiAntiAntiScan();
         }
         catch(Exception e){
