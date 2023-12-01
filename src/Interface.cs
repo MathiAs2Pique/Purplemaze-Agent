@@ -246,9 +246,6 @@ namespace Pagent
 
         public void InitWL(string slug, List<int> ports)
         {
-            // Flush
-            ClearList();
-
             // Check if file exists for base iptables
             if (File.Exists("iptables.txt"))
             {

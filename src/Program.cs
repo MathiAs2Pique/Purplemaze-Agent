@@ -70,6 +70,7 @@ class PPMProxy
         // Init
         try
         {
+            linterface.ClearList();
             foreach(string server in servers)
                 linterface.InitWL(server, ports);
             linterface.AntiAntiAntiScan();
